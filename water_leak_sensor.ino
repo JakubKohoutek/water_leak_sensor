@@ -1,14 +1,66 @@
+#include <ESP8266WiFi.h>
+#include <user_interface.h>
 #include "config.h"
 
-const auto WAKEUP_FUNCTION = [](void){/* Do nothing, just wake up */};
-const int  INTERRUPT_PIN   = 2;
+#define LED          2
+#define POWER_UP     0
+#define CODE_POWER   1
+#define CODE_RESET   2
+
+// Set ADC to read VCC voltage
+ADC_MODE(ADC_VCC);
 
 void setup() {
-  Serial.begin(9600);
+  pinMode(LED, OUTPUT);
+  digitalWrite(LED, HIGH);
 
-  // attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), WAKEUP_FUNCTION, LOW);
+  uint16_t reasonCode = findOutResetReason();
+
+  switch (reasonCode) {
+    case POWER_UP:
+      blinkCode(CODE_POWER);
+      sleep();
+      break;
+    default:
+      blinkCode(CODE_RESET);
+      sendNotification();
+  }
+}
+
+void sleep() {
+  ESP.deepSleep(0);
+}
+
+void connectToWiFi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_NAME, WIFI_PSWD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+}
+
+void sendNotification() {
+  connectToWiFi();
+  // TODO
+  sleep();
+}
+
+uint16_t findOutResetReason() {
+  rst_info *resetInfo = ESP.getResetInfoPtr();
+  uint16_t reasonCode = resetInfo->reason;
+
+  return reasonCode;
+}
+
+void blinkCode (int code) {
+  for(int i = 0; i < code; i++) {
+    digitalWrite(LED, LOW);
+    delay(500);
+    digitalWrite(LED, HIGH);
+    delay(500);
+  }
 }
 
 void loop() {
-  //
+  // Do nothing - code will never get here
 }

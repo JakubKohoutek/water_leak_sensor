@@ -29,6 +29,12 @@ EOF
 
 * [ ] TODO
 
+## Compilation and Upload Configuration
+
+* Board: Generic ESP8266 Module
+* Upload speed: 115200
+* Flash size: 4M (1M SPIFFS)
+
 ## Adjustments To Minimize Power Consumption
 
 I was able to lower the power consumption of ESP-8266 board by using the deep sleep mode.
