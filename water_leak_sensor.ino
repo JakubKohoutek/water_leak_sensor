@@ -2,33 +2,43 @@
 #include <user_interface.h>
 #include "config.h"
 
-#define LED          2
-#define POWER_UP     0
-#define CODE_POWER   1
-#define CODE_RESET   2
+#define LED_PIN         2
+#define SENSOR_PIN      12
+#define SLEEP_TIME      12e6
+
+#define POWER_UP        1
+#define STANDARD_WAKEUP 2
+#define ALARM_WAKEUP    3
 
 // Set ADC to read VCC voltage
 ADC_MODE(ADC_VCC);
 
 void setup() {
-  pinMode(LED, OUTPUT);
-  digitalWrite(LED, HIGH);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(SENSOR_PIN, INPUT);
 
-  uint16_t reasonCode = findOutResetReason();
+  digitalWrite(LED_PIN, HIGH);
+
+  int reasonCode = findOutResetReason();
+  blinkCode(reasonCode);
 
   switch (reasonCode) {
-    case POWER_UP:
-      blinkCode(CODE_POWER);
+    case ALARM_WAKEUP:
+      // Send notification
+      sleep();
+      break;
+    case STANDARD_WAKEUP:
+      // Check battery
+      // If it's low, send notification
       sleep();
       break;
     default:
-      blinkCode(CODE_RESET);
-      sendNotification();
+      sleep();
   }
 }
 
 void sleep() {
-  ESP.deepSleep(0);
+  ESP.deepSleep(SLEEP_TIME);
 }
 
 void connectToWiFi() {
@@ -47,16 +57,22 @@ void sendNotification() {
 
 uint16_t findOutResetReason() {
   rst_info *resetInfo = ESP.getResetInfoPtr();
-  uint16_t reasonCode = resetInfo->reason;
 
-  return reasonCode;
+  if(resetInfo->reason == 0)
+    return POWER_UP;
+
+  int sensorValue = digitalRead(SENSOR_PIN);
+  if(sensorValue == HIGH)
+    return STANDARD_WAKEUP;
+
+  return ALARM_WAKEUP;
 }
 
 void blinkCode (int code) {
   for(int i = 0; i < code; i++) {
-    digitalWrite(LED, LOW);
+    digitalWrite(LED_PIN, LOW);
     delay(500);
-    digitalWrite(LED, HIGH);
+    digitalWrite(LED_PIN, HIGH);
     delay(500);
   }
 }
