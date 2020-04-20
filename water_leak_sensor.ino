@@ -1,16 +1,18 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecure.h>
+#include <stdint.h>
 
 #include "config.h"
 
-#define LED_PIN         2
-#define SENSOR_PIN      12
-#define SLEEP_TIME      12e6
-#define PORT            443  // for https, http uses 80 by default
+#define LED_PIN          2
+#define SENSOR_PIN       12
+#define SLEEP_TIME       UINT32_MAX
+#define PORT             443  // for https, http uses 80 by default
+#define CRITICAL_VOLTAGE 5.0f
 
-#define STANDARD_WAKEUP 1
-#define ALARM_WAKEUP    2
+#define STANDARD_WAKEUP  1
+#define ALARM_WAKEUP     2
 
 void setup() {
   Serial.begin(115200);
@@ -47,16 +49,17 @@ void connectToWiFi() {
 }
 
 void handleAlarmWakeup() {
-  // Send alarm notification
+  sendNotification("Water leak in your flat detected!");
 }
 
 void handleStandardWakeup() {
-  // Check battery
-  // If it's low, send battery notification
   float voltage = readVoltage();
-  char message[15];
-  sprintf(message, "Voltage: %.2f", voltage);
-  sendNotification(message);
+
+  if (voltage < CRITICAL_VOLTAGE) {
+    char message[30];
+    sprintf(message, "Critical voltage: %.2fV!", voltage);
+    sendNotification(message);
+  }
 }
 
 float readVoltage() {
