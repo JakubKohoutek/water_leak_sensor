@@ -21,6 +21,10 @@ cat << EOF >> config.h
 #define WIFI_NAME "***"
 #define WIFI_PSWD "***"
 
+#define HOST      "https://***"
+#define API_TOKEN "***"
+#define PHONE_NUM "***"
+
 #endif
 EOF
 ```
