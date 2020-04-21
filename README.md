@@ -24,6 +24,7 @@ cat << EOF >> config.h
 #define HOST      "https://***"
 #define API_TOKEN "***"
 #define PHONE_NUM "***"
+#define EMAIL     "***"
 
 #endif
 EOF
