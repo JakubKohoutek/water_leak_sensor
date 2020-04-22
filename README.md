@@ -21,8 +21,9 @@ cat << EOF >> config.h
 #define WIFI_NAME "***"
 #define WIFI_PSWD "***"
 
-#define HOST      "https://***"
+#define API_HOST  "https://***"
 #define API_TOKEN "***"
+
 #define PHONE_NUM "***"
 #define EMAIL     "***"
 
@@ -43,3 +44,15 @@ EOF
 ## Adjustments To Minimize Power Consumption
 
 I was able to lower the power consumption of ESP-8266 board by using the deep sleep mode.
+
+For the sleep period, I am utilizing the `ESP.deepSleepMax()` function that returns maximum
+time the ESP is able to sleep. This number is a little different on every function call and
+therefore will vary between wake-ups, but according to my experiments it's always something
+over 3 hours.
+
+Current draw of the board and supplemental circuit in the deep sleep mode is about 30uA.
+When the board awakes and is not connected to WiFi (i.e. is only checking the voltage), then
+it draws around 70 mA for about 2 seconds.
+
+One standard 9V battery with a capacity of 500mAh should be in theory able to power the circuit
+for more than a year.

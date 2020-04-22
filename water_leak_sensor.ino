@@ -78,7 +78,7 @@ void sendSMSNotification (const char* message) {
   client.setInsecure();
   
   HTTPClient https;
-  String url = String(HOST) + "/sms";
+  String url = String(API_HOST) + "/sms";
   String payload = String("{") +
     "\"message\":\"" + message + "\"," +
     "\"token\":\"" + API_TOKEN + "\"," +
@@ -105,7 +105,7 @@ void sendEmailNotification (const char* message, const char* subject) {
   client.setInsecure();
   
   HTTPClient https;
-  String url = String(HOST) + "/email";
+  String url = String(API_HOST) + "/email";
   String payload = String("{") +
     "\"subject\":\"" + subject + "\"," +
     "\"body\":\"<p><b>" + message + "</b></p>\"," +
