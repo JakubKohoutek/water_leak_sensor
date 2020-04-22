@@ -7,7 +7,6 @@
                 "C:\\Program Files (x86)\\Arduino\\hardware\\**",
                 "C:\\Program Files (x86)\\Arduino\\libraries\\**",
                 "C:\\Users\\Dell\\Documents\\Arduino\\libraries\\**",
-                "C:\\Users\\Dell\\Documents\\Arduino\\hardware\\**",
                 "C:\\Users\\Dell\\AppData\\Local\\Arduino15\\packages\\digistump\\hardware\\**",
                 "C:\\Users\\Dell\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
                 "C:\\Users\\Dell\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\**",
@@ -24,7 +23,6 @@
                     "C:\\Program Files (x86)\\Arduino\\hardware\\**",
                     "C:\\Program Files (x86)\\Arduino\\libraries\\**",
                     "C:\\Users\\Dell\\Documents\\Arduino\\libraries\\**",
-                    "C:\\Users\\Dell\\Documents\\Arduino\\hardware\\**",
                     "C:\\Users\\Dell\\AppData\\Local\\Arduino15\\packages\\digistump\\hardware\\**",
                     "C:\\Users\\Dell\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
                     "C:\\Users\\Dell\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\**"
