@@ -8,11 +8,14 @@
 #define SENSOR_PIN       12
 #define PORT             443  // for https, http uses 80 by default
 #define CRITICAL_VOLTAGE 4.5f
+#define SLEEP_TIME       3*60*60e6 // the highest sleep period that works reliably
 
 #define STANDARD_WAKEUP  1
 #define ALARM_WAKEUP     2
 
 void setup () {
+  WiFi.mode(WIFI_STA);
+  
   Serial.begin(115200);
   Serial.println("");
   pinMode(LED_PIN, OUTPUT);
@@ -28,11 +31,10 @@ void setup () {
   else
     handleAlarmWakeup();
 
-  ESP.deepSleep(ESP.deepSleepMax());
+  ESP.deepSleep(SLEEP_TIME);
 }
 
 void connectToWiFi () {
-  WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_NAME, WIFI_PSWD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -40,28 +42,25 @@ void connectToWiFi () {
   Serial.println("Connected");
 }
 
-void disconnectFromWiFi () {
-  WiFi.disconnect();
-}
-
 void handleAlarmWakeup () {
   connectToWiFi();
   const char* message = "Water leak in your flat detected!";
   sendSMSNotification(message);
   sendEmailNotification(message, "Urgent - water is leaking");
-  disconnectFromWiFi();
 }
 
 void handleStandardWakeup () {
   float voltage = readVoltage();
+  connectToWiFi();
+  char message[60];
 
   if (voltage < CRITICAL_VOLTAGE) {
-    connectToWiFi();
-    char message[60];
     sprintf(message, "Water leak sensor has a critical voltage of %.2fV!", voltage);
     sendSMSNotification(message);
     sendEmailNotification(message, "Warning - low battery");
-    disconnectFromWiFi();
+  } else {
+    sprintf(message, "Battery voltage is %.2fV!", voltage);
+    sendEmailNotification(message, "Notice - battery OK");
   }
 }
 
@@ -73,11 +72,6 @@ float readVoltage () {
 }
 
 void sendSMSNotification (const char* message) {
-  WiFiClientSecure client;
-
-  client.setInsecure();
-  
-  HTTPClient https;
   String url = String(API_HOST) + "/sms";
   String payload = String("{") +
     "\"message\":\"" + message + "\"," +
@@ -85,26 +79,10 @@ void sendSMSNotification (const char* message) {
     "\"phoneNumber\":\"" + PHONE_NUM + "\"" +
   "}";
 
-  Serial.println(url);
-  Serial.println(payload);
-
-  https.begin(client, url.c_str());
-  https.addHeader("Content-Type", "application/json");
-  int responseCode = https.POST(payload);
-
-  if (responseCode > 0) {
-    Serial.println(responseCode);
-  } else {
-    Serial.println(https.errorToString(responseCode).c_str());
-  }
+  sendApiRequest(url.c_str(), payload.c_str());
 }
 
 void sendEmailNotification (const char* message, const char* subject) {
-  WiFiClientSecure client;
-
-  client.setInsecure();
-  
-  HTTPClient https;
   String url = String(API_HOST) + "/email";
   String payload = String("{") +
     "\"subject\":\"" + subject + "\"," +
@@ -113,10 +91,18 @@ void sendEmailNotification (const char* message, const char* subject) {
     "\"email\":\"" + EMAIL + "\"" +
   "}";
 
+  sendApiRequest(url.c_str(), payload.c_str());
+}
+
+void sendApiRequest (const char* url, const char* payload) {
   Serial.println(url);
   Serial.println(payload);
 
-  https.begin(client, url.c_str());
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient https;
+  https.begin(client, url);
   https.addHeader("Content-Type", "application/json");
   int responseCode = https.POST(payload);
 
@@ -129,10 +115,8 @@ void sendEmailNotification (const char* message, const char* subject) {
 
 int findOutResetReason () {
   int sensorValue = digitalRead(SENSOR_PIN);
-  if(sensorValue == HIGH)
-    return STANDARD_WAKEUP;
 
-  return ALARM_WAKEUP;
+  return (sensorValue == HIGH) ? STANDARD_WAKEUP : ALARM_WAKEUP;
 }
 
 void blinkCode (int code) {
