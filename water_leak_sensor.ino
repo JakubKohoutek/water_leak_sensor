@@ -7,7 +7,7 @@
 #define LED_PIN          2
 #define SENSOR_PIN       12
 #define PORT             443  // for https, http uses 80 by default
-#define CRITICAL_VOLTAGE 4.5f
+#define CRITICAL_VOLTAGE 5.0f
 #define SLEEP_TIME       3*60*60e6 // the highest sleep period that works reliably
 
 #define STANDARD_WAKEUP  1
@@ -51,16 +51,13 @@ void handleAlarmWakeup () {
 
 void handleStandardWakeup () {
   float voltage = readVoltage();
-  connectToWiFi();
-  char message[60];
 
   if (voltage < CRITICAL_VOLTAGE) {
+    connectToWiFi();
+    char message[60];
     sprintf(message, "Water leak sensor has a critical voltage of %.2fV!", voltage);
     sendSMSNotification(message);
     sendEmailNotification(message, "Warning - low battery");
-  } else {
-    sprintf(message, "Battery voltage is %.2fV!", voltage);
-    sendEmailNotification(message, "Notice - battery OK");
   }
 }
 
