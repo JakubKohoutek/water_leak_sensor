@@ -13,7 +13,7 @@ notification in case the energy drops below a critical threshold.
 
 ## Circuit Diagram
 
-![](images/circuit_diagram.png)
+![](circuit_diagram/image.png)
 
 The circuit was designed to run on a 9V battery, but it can accept any voltage between
 3.5 - 12 volts. Just don't forget to adjust the `CRITICAL_VOLTAGE` in the
