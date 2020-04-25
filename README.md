@@ -1,15 +1,28 @@
 # Water Leak Sensor
 
-This repository contains circuit diagram and code for low power water leak sensor using ESP-8266.
+This repository contains circuit diagram and code for low power water leak sensor using
+ESP-8266 (ESP-12).
 
 ## Description
 
-* [ ] TODO
+Purpose of this project is to create an online sensor that detects water leak (e.g. in 
+bathroom or toilet) and sends a push notification immediately.
+
+The sensor also observes its level of battery voltage at regular intervals and sends
+notification in case the energy drops below a critical threshold.
+
+## Circuit Diagram
+
+![](images/circuit_diagram.png)
+
+The circuit was designed to run on a 9V battery, but it can accept any voltage between
+3.5 - 12 volts. Just don't forget to adjust the `CRITICAL_VOLTAGE` in the
+[sketch](./water_leak_sensor.ino) accordingly.
 
 ## Credentials and Configuration
 
-This snippet uses a configuration file `config.h` that stores credentials and confidential information
-used within the code.
+This snippet uses a configuration file `config.h` that stores credentials and confidential
+information used within the code.
 
 To create the file, run the following script (replace `***` with the real values):
 
@@ -31,10 +44,6 @@ cat << EOF >> config.h
 EOF
 ```
 
-## Circuit Diagram
-
-* [ ] TODO
-
 ## Compilation and Upload Configuration
 
 * Board: Generic ESP8266 Module
@@ -54,5 +63,9 @@ Current draw of the board and supplemental circuit in the deep sleep mode is abo
 When the board awakes and is not connected to WiFi (i.e. is only checking the voltage), then
 it draws around 70 mA for about 2 seconds.
 
-One standard 9V battery with a capacity of 500mAh should be in theory able to power the circuit
-for more than a year.
+One standard 9V battery with a capacity of 500mAh should be in theory able to power the
+circuit for more than a year.
+
+## The Finished Product
+
+* TODO
