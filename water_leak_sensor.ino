@@ -15,9 +15,12 @@
 
 void setup () {
   WiFi.mode(WIFI_STA);
-  
-  Serial.begin(115200);
-  Serial.println("");
+
+  #ifdef DEBUG
+    Serial.begin(115200);
+    Serial.println("");
+  #endif
+
   pinMode(LED_PIN, OUTPUT);
   pinMode(SENSOR_PIN, INPUT);
 
@@ -39,7 +42,10 @@ void connectToWiFi () {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
   }
-  Serial.println("Connected");
+  
+  #ifdef DEBUG
+    Serial.println("Connected");
+  #endif
 }
 
 void handleAlarmWakeup () {
@@ -92,8 +98,10 @@ void sendEmailNotification (const char* message, const char* subject) {
 }
 
 void sendApiRequest (const char* url, const char* payload) {
-  Serial.println(url);
-  Serial.println(payload);
+  #ifdef DEBUG
+    Serial.println(url);
+    Serial.println(payload);
+  #endif
 
   WiFiClientSecure client;
   client.setInsecure();
@@ -103,11 +111,13 @@ void sendApiRequest (const char* url, const char* payload) {
   https.addHeader("Content-Type", "application/json");
   int responseCode = https.POST(payload);
 
-  if (responseCode > 0) {
-    Serial.println(responseCode);
-  } else {
-    Serial.println(https.errorToString(responseCode).c_str());
-  }
+  #ifdef DEBUG
+    if (responseCode > 0) {
+      Serial.println(responseCode);
+    } else {
+      Serial.println(https.errorToString(responseCode).c_str());
+    }
+  #endif
 }
 
 int findOutResetReason () {
