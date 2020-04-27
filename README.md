@@ -68,4 +68,5 @@ circuit for more than a year.
 
 ## The Finished Product
 
-* TODO
+![](images/sensor_open.jpg)
+![](images/sensor_closed.jpg)
