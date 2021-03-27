@@ -12,7 +12,7 @@
                 "C:\\Users\\Dell\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\**",
                 "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\**",
                 "C:\\Program Files (x86)\\Arduino\\tools\\**",
-                "C:\\Users\\Dell\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\**"
+                "C:\\Users\\Dell\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.7.4\\**"
             ],
             "forcedInclude": [
                 "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\cores\\arduino\\Arduino.h"

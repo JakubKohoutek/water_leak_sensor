@@ -2,12 +2,13 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecure.h>
 
+#include "melody.h"
 #include "config.h"
 
 #define LED_PIN          2
 #define SENSOR_PIN       12
 #define PORT             443  // for https, http uses 80 by default
-#define CRITICAL_VOLTAGE 5.0f
+#define CRITICAL_VOLTAGE 3.4f
 #define SLEEP_TIME       3*60*60e6 // the highest sleep period that works reliably
 
 #define STANDARD_WAKEUP  1
@@ -27,7 +28,6 @@ void setup () {
   digitalWrite(LED_PIN, HIGH);
 
   int reasonCode = findOutResetReason();
-  blinkCode(reasonCode);
 
   if (reasonCode == STANDARD_WAKEUP)
     handleStandardWakeup();
@@ -53,6 +53,9 @@ void handleAlarmWakeup () {
   const char* message = "Water leak in your flat detected!";
   sendSMSNotification(message);
   sendEmailNotification(message, "Urgent - water is leaking");
+  while(digitalRead(SENSOR_PIN) == LOW) {
+    playMelody(melodyAlarm, melodyAlarmLength);
+  }
 }
 
 void handleStandardWakeup () {
@@ -62,8 +65,8 @@ void handleStandardWakeup () {
     connectToWiFi();
     char message[60];
     sprintf(message, "Water leak sensor has a critical voltage of %.2fV!", voltage);
-    sendSMSNotification(message);
     sendEmailNotification(message, "Warning - low battery");
+    playMelody(melodyBeep, melodyBeepLength);
   }
 }
 
@@ -124,15 +127,6 @@ int findOutResetReason () {
   int sensorValue = digitalRead(SENSOR_PIN);
 
   return (sensorValue == HIGH) ? STANDARD_WAKEUP : ALARM_WAKEUP;
-}
-
-void blinkCode (int code) {
-  for(int i = 0; i < code; i++) {
-    digitalWrite(LED_PIN, LOW);
-    delay(500);
-    digitalWrite(LED_PIN, HIGH);
-    delay(500);
-  }
 }
 
 void loop () {
