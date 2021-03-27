@@ -15,7 +15,7 @@ notification in case the energy drops below a critical threshold.
 
 ![](circuit_diagram/image.png)
 
-The circuit was designed to run on a 9V battery, but it can accept any voltage between
+The circuit was designed to run on a 3.7V Li-Ion battery, but it can accept any voltage between
 3.5 - 12 volts. Just don't forget to adjust the `CRITICAL_VOLTAGE` in the
 [sketch](./water_leak_sensor.ino) accordingly.
 
@@ -58,9 +58,6 @@ am using the maximum reliable deep sleep interval of 3 hours.
 Current draw of the board and supplemental circuit in the deep sleep mode is about 30uA.
 When the board awakes and is not connected to WiFi (i.e. is only checking the voltage), then
 it draws around 70 mA for about 2 seconds.
-
-One standard 9V battery with a capacity of 500mAh should be in theory able to power the
-circuit for more than a year.
 
 ## The Finished Product
 
