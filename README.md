@@ -39,6 +39,7 @@ cat << EOF >> config.h
 
 #define PHONE_NUM "***"
 #define EMAIL     "***"
+#define PLACE     "toilet"
 
 #endif
 EOF

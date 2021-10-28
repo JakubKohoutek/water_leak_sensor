@@ -71,8 +71,20 @@ void handleStandardWakeup () {
 }
 
 float readVoltage () {
-  int sensorValue = analogRead(A0);
-  float voltage = (float)map(sensorValue, 13, 796, 0, 840) / 100;
+  float samples = 0;
+  int samplesLength = 100;
+  for (int i = 0; i < samplesLength; i++) {
+    samples += analogRead(A0);
+    delay(2);
+  }
+  int sensorValue = samples / samplesLength;
+
+  // With 1:10 voltage devider, maximum voltage is 11V
+  float voltage = (float)sensorValue / 1024.0 * 11;
+
+  #ifdef DEBUG
+    Serial.println(String("Sensor value: ") + String(sensorValue) + String(", voltage: ") + String(voltage));
+  #endif
 
   return voltage;
 }
@@ -91,7 +103,7 @@ void sendSMSNotification (const char* message) {
 void sendEmailNotification (const char* message, const char* subject) {
   String url = String(API_HOST) + "/email";
   String payload = String("{") +
-    "\"subject\":\"" + subject + "\"," +
+    "\"subject\":\"" + subject + " (" + PLACE + ")" + "\"," +
     "\"body\":\"<p><b>" + message + "</b></p>\"," +
     "\"token\":\"" + API_TOKEN + "\"," +
     "\"email\":\"" + EMAIL + "\"" +
