@@ -8,11 +8,14 @@
 #define LED_PIN          2
 #define SENSOR_PIN       12
 #define PORT             443  // for https, http uses 80 by default
-#define CRITICAL_VOLTAGE 3.4f
+#define CRITICAL_VOLTAGE 3.6f // we must leave some buffer as WiFi connection might drop
+                              // the voltage even more and the whole module can freeze
 #define SLEEP_TIME       3*60*60e6 // the highest sleep period that works reliably
 
 #define STANDARD_WAKEUP  1
 #define ALARM_WAKEUP     2
+
+//#define DEBUG
 
 void setup () {
   WiFi.mode(WIFI_STA);
@@ -79,9 +82,13 @@ float readVoltage () {
   }
   int sensorValue = samples / samplesLength;
 
-  // With 1:10 voltage devider, maximum voltage is 11V
-  float voltage = (float)sensorValue / 1024.0 * 11;
-
+  // Calculation of voltage is based on the values of voltage divider resistors
+  int vccResistor = 1000;
+  int gndResistor = 100;
+  float callibrationCoefficient = 0.985; // differs device by device due to the cheap ADC used
+  float resistorsRatio = (float)gndResistor / (vccResistor + gndResistor);
+  float voltage = (callibrationCoefficient * (float)sensorValue / 1024.0) / resistorsRatio;
+  
   #ifdef DEBUG
     Serial.println(String("Sensor value: ") + String(sensorValue) + String(", voltage: ") + String(voltage));
   #endif
