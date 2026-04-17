@@ -103,8 +103,11 @@ static void publishEntity (
       ",\"stat_cla\":\"%s\"", stateClass);
   }
   if (displayPrecision >= 0) {
+    // Use the full HA field name — some HA versions only honor the
+    // abbreviation "sug_dsp_prc" inconsistently for this relatively new
+    // option (added in HA 2023.2).
     len += snprintf(payload + len, sizeof(payload) - len,
-      ",\"sug_dsp_prc\":%d", displayPrecision);
+      ",\"suggested_display_precision\":%d", displayPrecision);
   }
   if (strcmp(component, "binary_sensor") == 0) {
     len += snprintf(payload + len, sizeof(payload) - len,
