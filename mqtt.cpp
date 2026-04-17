@@ -65,13 +65,14 @@ static String titleCase (const String& s) {
 }
 
 static void publishEntity (
-  const char* component, // "sensor" or "binary_sensor"
-  const char* objectId,  // "battery", "leak"
-  const char* name,      // HA friendly name
+  const char* component,   // "sensor" or "binary_sensor"
+  const char* objectId,    // "battery", "leak"
+  const char* name,        // HA friendly name
   const char* stateTopic,
   const char* deviceClass,
-  const char* unit,      // NULL if not applicable
-  const char* stateClass // NULL for binary_sensor
+  const char* unit,        // NULL if not applicable
+  const char* stateClass,  // NULL for binary_sensor
+  int displayPrecision     // -1 = let HA decide
 ) {
   char topic[128];
   snprintf(topic, sizeof(topic),
@@ -101,6 +102,10 @@ static void publishEntity (
     len += snprintf(payload + len, sizeof(payload) - len,
       ",\"stat_cla\":\"%s\"", stateClass);
   }
+  if (displayPrecision >= 0) {
+    len += snprintf(payload + len, sizeof(payload) - len,
+      ",\"sug_dsp_prc\":%d", displayPrecision);
+  }
   if (strcmp(component, "binary_sensor") == 0) {
     len += snprintf(payload + len, sizeof(payload) - len,
       ",\"pl_on\":\"ON\",\"pl_off\":\"OFF\"");
@@ -115,11 +120,11 @@ void publishDiscovery () {
 
   publishEntity(
     "sensor", "battery", "Battery",
-    batteryTopic.c_str(), "voltage", "V", "measurement"
+    batteryTopic.c_str(), "voltage", "V", "measurement", 2
   );
   publishEntity(
     "binary_sensor", "leak", "Leak",
-    leakTopic.c_str(), "moisture", NULL, NULL
+    leakTopic.c_str(), "moisture", NULL, NULL, -1
   );
 }
 

@@ -17,10 +17,13 @@
 #define STANDARD_WAKEUP  1
 #define ALARM_WAKEUP     2
 
-//#define DEBUG
+#define DEBUG
 
 void setup () {
-  WiFi.mode(WIFI_STA);
+  // Keep the radio off at boot so readVoltage() samples the ADC with a quiet
+  // RF environment. connectToWiFi() switches to WIFI_STA when we actually
+  // need the network.
+  WiFi.mode(WIFI_OFF);
 
   #ifdef DEBUG
     Serial.begin(115200);
@@ -45,6 +48,7 @@ void setup () {
 }
 
 void connectToWiFi () {
+  WiFi.mode(WIFI_STA);
   WiFi.begin(STASSID, STAPSK);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -71,11 +75,13 @@ void publishMqttStatus (float voltage, bool wet) {
 }
 
 void handleAlarmWakeup () {
+  // Sample voltage before turning on WiFi so RF noise doesn't corrupt the ADC.
+  float voltage = readVoltage();
   connectToWiFi();
   const char* message = "Water leak in your flat detected!";
   sendSMSNotification(message);
   sendEmailNotification(message, "Urgent - water is leaking");
-  publishMqttStatus(readVoltage(), true);
+  publishMqttStatus(voltage, true);
   while(digitalRead(SENSOR_PIN) == LOW) {
     playMelody(melodyAlarm, melodyAlarmLength);
   }
@@ -100,23 +106,54 @@ void handleStandardWakeup () {
 }
 
 float readVoltage () {
-  float samples = 0;
-  int samplesLength = 100;
-  for (int i = 0; i < samplesLength; i++) {
-    samples += analogRead(A0);
-    delay(2);
+  // Discard the first reads — the ADC is noisy right after wake-up and
+  // the first sample after a long idle period is frequently an outlier.
+  const int warmupSamples = 16;
+  for (int i = 0; i < warmupSamples; i++) {
+    analogRead(A0);
+    delay(5);
   }
-  int sensorValue = samples / samplesLength;
+
+  // Collect samples and reject the highest and lowest few as outliers
+  // (trimmed mean) — cheaper than a full median sort but far more robust
+  // to occasional ADC glitches than a plain average.
+  const int samplesLength = 100;
+  const int trim = 10; // drop 10 lowest + 10 highest
+  int samples[samplesLength];
+  for (int i = 0; i < samplesLength; i++) {
+    samples[i] = analogRead(A0);
+    delay(5);
+  }
+
+  // Simple insertion sort — samplesLength is small enough.
+  for (int i = 1; i < samplesLength; i++) {
+    int v = samples[i];
+    int j = i - 1;
+    while (j >= 0 && samples[j] > v) {
+      samples[j + 1] = samples[j];
+      j--;
+    }
+    samples[j + 1] = v;
+  }
+
+  float sum = 0;
+  for (int i = trim; i < samplesLength - trim; i++) {
+    sum += samples[i];
+  }
+  float sensorValue = sum / (float)(samplesLength - 2 * trim);
 
   // Calculation of voltage is based on the values of voltage divider resistors
-  int vccResistor = 1000;
-  int gndResistor = 100;
-  float callibrationCoefficient = 0.985; // differs device by device due to the cheap ADC used
-  float resistorsRatio = (float)gndResistor / (vccResistor + gndResistor);
-  float voltage = (callibrationCoefficient * (float)sensorValue / 1024.0) / resistorsRatio;
+  const int vccResistor = 1000;
+  const int gndResistor = 100;
+  const float callibrationCoefficient = 0.985f; // differs device by device due to the cheap ADC used
+  const float resistorsRatio = (float)gndResistor / (float)(vccResistor + gndResistor);
+  const float voltage = (callibrationCoefficient * sensorValue / 1024.0f) / resistorsRatio;
 
   #ifdef DEBUG
-    Serial.println(String("Sensor value: ") + String(sensorValue) + String(", voltage: ") + String(voltage));
+    Serial.println(String("ADC trimmed mean: ") + String(sensorValue, 2) +
+                   String(", min: ") + String(samples[0]) +
+                   String(", max: ") + String(samples[samplesLength - 1]) +
+                   String(", voltage: ") + String(voltage, 3));
   #endif
 
   return voltage;
