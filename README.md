@@ -1,15 +1,18 @@
 # Water Leak Sensor
 
 This repository contains circuit diagram and code for low power water leak sensor using
-ESP-8266 (ESP-12).
+ESP-8266 (ESP-12E).
 
 ## Description
 
-Purpose of this project is to create an online sensor that detects water leak (e.g. in 
+Purpose of this project is to create an online sensor that detects water leak (e.g. in
 bathroom or toilet) and sends a push notification immediately.
 
 The sensor also observes its level of battery voltage at regular intervals and sends
-notification in case the energy drops below a critical threshold.
+notification in case the energy drops below a critical threshold. On every wake it
+publishes the current battery voltage and leak state to an MQTT broker with
+Home Assistant auto-discovery, so a "Water Leak Sensor (Bathroom)" device appears in
+Home Assistant with no manual YAML.
 
 ## Circuit Diagram
 
@@ -21,32 +24,70 @@ The circuit was designed to run on a 3.7V Li-Ion battery, but it can accept any 
 
 ## Credentials and Configuration
 
-This snippet uses a configuration file `config.h` that stores credentials and confidential
-information used within the code.
+This sketch uses a user-scoped Arduino library named `credentials` (installed at
+`~/Documents/Arduino/libraries/credentials/credentials.h`) so the same credentials
+header is shared across projects. Required macros:
 
-To create the file, run the following script (replace `***` with the real values):
-
-```bash
-cat << EOF >> config.h
-#ifndef CONFIG_H
-#define CONFIG_H
-
-#define WIFI_NAME "***"
-#define WIFI_PSWD "***"
-
-#define API_HOST  "https://***"
-#define API_TOKEN "***"
-
-#define PHONE_NUM "***"
-#define EMAIL     "***"
-#define PLACE     "toilet"
-
+```c
+#ifndef STASSID
+  #define STASSID   "..."
+  #define STAPSK    "..."
 #endif
-EOF
+
+#ifndef API_HOST
+  #define API_HOST  "https://..."
+  #define API_TOKEN "..."
+  #define PHONE_NUM "..."
+  #define EMAIL     "..."
+#endif
+
+#ifndef MQTT_SERVER
+  #define MQTT_SERVER "homeassistant.local"
+  #define MQTT_PORT   1883
+  #define MQTT_USER   "..."   // optional; omit the #define to connect anonymously
+  #define MQTT_PASS   "..."
+#endif
 ```
 
-## Compilation and Upload Configuration
+The `PLACE` macro (e.g. `"bathroom"`, `"toilet"`) is defined at the top of
+`water_leak_sensor.ino` — change it per-unit. It appears in the email subject, the MQTT
+topic path, and the Home Assistant device name.
 
+## MQTT Topics
+
+With `PLACE = "bathroom"`:
+
+| Topic                                     | Retained | Payload          |
+|-------------------------------------------|----------|------------------|
+| `water_leak_sensor/bathroom/battery`      | yes      | voltage in V     |
+| `water_leak_sensor/bathroom/leak`         | yes      | `ON` / `OFF`     |
+| `water_leak_sensor/bathroom/available`    | yes      | `online` / `offline` (LWT) |
+
+Home Assistant auto-discovery configs are published to
+`homeassistant/sensor/water_leak_<chipid>/battery/config` and
+`homeassistant/binary_sensor/water_leak_<chipid>/leak/config` on each wake.
+
+## Compilation and Upload
+
+The sketch targets the generic ESP8266 core. With `arduino-cli` on your PATH, use the
+helper scripts in `scripts/`:
+
+```bash
+scripts/upload.sh            # upload + open serial monitor
+scripts/upload.sh --compile  # compile first, then upload
+scripts/monitor.sh           # just open the serial monitor
+```
+
+The first time you run either script it asks which serial port to use and remembers the
+choice for the rest of the shell session (cached in `$WATER_LEAK_SENSOR_UPLOAD_PORT`).
+
+Manual compile (equivalent to what the script runs):
+
+```bash
+arduino-cli compile --fqbn esp8266:esp8266:generic --libraries ~/Documents/Arduino/libraries .
+```
+
+IDE settings if you prefer Arduino IDE:
 * Board: Generic ESP8266 Module
 * Upload speed: 115200
 * Flash size: 4M (1M SPIFFS)

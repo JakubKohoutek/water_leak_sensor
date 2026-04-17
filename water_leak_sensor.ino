@@ -1,9 +1,10 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecure.h>
+#include <credentials.h>
 
 #include "melody.h"
-#include "config.h"
+#include "mqtt.h"
 
 #define LED_PIN          2
 #define SENSOR_PIN       12
@@ -11,6 +12,7 @@
 #define CRITICAL_VOLTAGE 3.6f // we must leave some buffer as WiFi connection might drop
                               // the voltage even more and the whole module can freeze
 #define SLEEP_TIME       3*60*60e6 // the highest sleep period that works reliably
+#define PLACE     "bathroom" // place of the sensor, used in email subject + MQTT topic
 
 #define STANDARD_WAKEUP  1
 #define ALARM_WAKEUP     2
@@ -30,6 +32,8 @@ void setup () {
 
   digitalWrite(LED_PIN, HIGH);
 
+  initiateMqtt(PLACE);
+
   int reasonCode = findOutResetReason();
 
   if (reasonCode == STANDARD_WAKEUP)
@@ -41,14 +45,29 @@ void setup () {
 }
 
 void connectToWiFi () {
-  WiFi.begin(WIFI_NAME, WIFI_PSWD);
+  WiFi.begin(STASSID, STAPSK);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
   }
-  
+
   #ifdef DEBUG
     Serial.println("Connected");
   #endif
+}
+
+void publishMqttStatus (float voltage, bool wet) {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (!connectMqtt()) {
+    #ifdef DEBUG
+      Serial.println("MQTT connect failed");
+    #endif
+    return;
+  }
+
+  publishDiscovery();
+  publishBattery(voltage);
+  publishLeak(wet);
+  disconnectMqtt();
 }
 
 void handleAlarmWakeup () {
@@ -56,6 +75,7 @@ void handleAlarmWakeup () {
   const char* message = "Water leak in your flat detected!";
   sendSMSNotification(message);
   sendEmailNotification(message, "Urgent - water is leaking");
+  publishMqttStatus(readVoltage(), true);
   while(digitalRead(SENSOR_PIN) == LOW) {
     playMelody(melodyAlarm, melodyAlarmLength);
   }
@@ -64,13 +84,19 @@ void handleAlarmWakeup () {
 void handleStandardWakeup () {
   float voltage = readVoltage();
 
+  // Always connect WiFi on standard wake so we can publish battery to MQTT
+  // and clear any stale leak=ON retained state. The extra WiFi session costs
+  // ~2s every 3h, which is acceptable for continuous HA visibility.
+  connectToWiFi();
+
   if (voltage < CRITICAL_VOLTAGE) {
-    connectToWiFi();
     char message[60];
     sprintf(message, "Water leak sensor has a critical voltage of %.2fV!", voltage);
     sendEmailNotification(message, "Warning - low battery");
     playMelody(melodyBeep, melodyBeepLength);
   }
+
+  publishMqttStatus(voltage, false);
 }
 
 float readVoltage () {
@@ -88,7 +114,7 @@ float readVoltage () {
   float callibrationCoefficient = 0.985; // differs device by device due to the cheap ADC used
   float resistorsRatio = (float)gndResistor / (vccResistor + gndResistor);
   float voltage = (callibrationCoefficient * (float)sensorValue / 1024.0) / resistorsRatio;
-  
+
   #ifdef DEBUG
     Serial.println(String("Sensor value: ") + String(sensorValue) + String(", voltage: ") + String(voltage));
   #endif
