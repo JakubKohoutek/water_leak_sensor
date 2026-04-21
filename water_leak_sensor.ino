@@ -11,13 +11,34 @@
 #define PORT             443  // for https, http uses 80 by default
 #define CRITICAL_VOLTAGE 3.6f // we must leave some buffer as WiFi connection might drop
                               // the voltage even more and the whole module can freeze
-#define SLEEP_TIME       3*60*60e6 // the highest sleep period that works reliably
+#define SLEEP_TIME               3*60*60e6 // the highest sleep period that works reliably
+#define LEAK_MONITOR_SLEEP_TIME  60e6      // 1 minute — used after an alarm to confirm "dry"
 #define PLACE     "bathroom" // place of the sensor, used in email subject + MQTT topic
 
 #define STANDARD_WAKEUP  1
 #define ALARM_WAKEUP     2
 
 #define DEBUG
+
+// Persisted in RTC user memory so it survives deep sleep but not a cold boot /
+// external reset. Used to remember that we already notified about the current
+// leak and should short-sleep until the probes dry.
+struct __attribute__((packed)) RtcState {
+  uint32_t magic;
+  uint8_t  inLeakMode;
+  uint8_t  _pad[3];
+};
+static const uint32_t RTC_MAGIC = 0xA51E4C01;
+
+bool readRtcState (RtcState& state) {
+  if (!ESP.rtcUserMemoryRead(0, (uint32_t*)&state, sizeof(state))) return false;
+  return state.magic == RTC_MAGIC;
+}
+
+void writeRtcState (bool inLeakMode) {
+  RtcState state = { RTC_MAGIC, (uint8_t)(inLeakMode ? 1 : 0), {0, 0, 0} };
+  ESP.rtcUserMemoryWrite(0, (uint32_t*)&state, sizeof(state));
+}
 
 void setup () {
   // Keep the radio off at boot so readVoltage() samples the ADC with a quiet
@@ -37,14 +58,36 @@ void setup () {
 
   initiateMqtt(PLACE);
 
+  RtcState rtc;
+  bool rtcValid = readRtcState(rtc);
+  bool inLeakMode = rtcValid && rtc.inLeakMode;
+
+  #ifdef DEBUG
+    Serial.println(String("RTC valid: ") + (rtcValid ? "yes" : "no") +
+                   String(", inLeakMode: ") + (inLeakMode ? "yes" : "no"));
+  #endif
+
   int reasonCode = findOutResetReason();
 
-  if (reasonCode == STANDARD_WAKEUP)
+  uint64_t sleepTime;
+  if (reasonCode == ALARM_WAKEUP) {
+    // Probes are wet. Notify on the first wet wake only; re-arm short sleep
+    // either way so we keep re-checking until the probes dry.
+    handleAlarmWakeup(inLeakMode);
+    writeRtcState(true);
+    sleepTime = LEAK_MONITOR_SLEEP_TIME;
+  } else {
+    // Probes are dry. Either a normal periodic wake or the "dry" confirmation
+    // after a leak event — handleStandardWakeup() publishes leak=OFF + battery
+    // in both cases.
     handleStandardWakeup();
-  else
-    handleAlarmWakeup();
+    if (inLeakMode) {
+      writeRtcState(false);
+    }
+    sleepTime = SLEEP_TIME;
+  }
 
-  ESP.deepSleep(SLEEP_TIME);
+  ESP.deepSleep(sleepTime);
 }
 
 void connectToWiFi () {
@@ -74,13 +117,15 @@ void publishMqttStatus (float voltage, bool wet) {
   disconnectMqtt();
 }
 
-void handleAlarmWakeup () {
+void handleAlarmWakeup (bool alreadyNotified) {
   // Sample voltage before turning on WiFi so RF noise doesn't corrupt the ADC.
   float voltage = readVoltage();
   connectToWiFi();
-  const char* message = "Water leak in your flat detected!";
-  sendSMSNotification(message);
-  sendEmailNotification(message, "Urgent - water is leaking");
+  if (!alreadyNotified) {
+    const char* message = "Water leak in your flat detected!";
+    sendSMSNotification(message);
+    sendEmailNotification(message, "Urgent - water is leaking");
+  }
   publishMqttStatus(voltage, true);
   while(digitalRead(SENSOR_PIN) == LOW) {
     playMelody(melodyAlarm, melodyAlarmLength);
